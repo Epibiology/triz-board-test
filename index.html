@@ -1,0 +1,697 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TRIZ BCI Board</title><style>*{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#152131;color:#e9eff8}header,nav{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px}button,select,input{font:inherit;border:1px solid #526174;border-radius:7px;padding:8px;background:#26364b;color:white}button{cursor:pointer}button.active{background:#3974db}#stage{position:relative;flex:1;overflow:hidden}svg{width:100%;height:100%;touch-action:none;display:block}main{display:flex;flex:1;min-height:0}body{height:100dvh;display:flex;flex-direction:column}aside{width:280px;background:#1e2c40;padding:12px;display:flex;flex-direction:column;gap:8px}#messages{flex:1;overflow:auto;overflow-wrap:anywhere}#messages p{padding:9px 10px;border-radius:9px;margin:0 0 9px 0;white-space:pre-wrap;overflow-wrap:anywhere;border-left:4px solid var(--msg-accent,#8294aa);background:var(--msg-bg,#34465d);color:#f4f7fb}
+#messages p .msg-meta{font-size:12px;opacity:.88;margin-bottom:3px;display:flex;gap:6px;align-items:center}
+#messages p .msg-author{font-weight:700}
+#messages p .msg-body{white-space:pre-wrap;overflow-wrap:anywhere}
+#messages p.msg-own{box-shadow:inset 0 0 0 1px #ffffff20}
+#gate{position:fixed;inset:0;background:#152131;display:grid;place-items:center;z-index:5}#gate form{padding:30px;background:#26364b;border-radius:16px}#status{margin-left:auto;color:#b6c6dc}#error{color:#ff9b9b;min-height:1.3em;max-width:420px;overflow-wrap:anywhere}#login button[disabled]{opacity:.65;cursor:wait} #inlineEditor{position:absolute;z-index:4;display:none;min-width:150px;max-width:95%;background:#fff;color:#172536;border:2px solid #60a5fa;border-radius:8px;padding:5px;box-shadow:0 5px 20px #0004}#inlineEditor textarea{display:block;width:100%;min-height:48px;resize:vertical;background:transparent;color:inherit;border:0;outline:none;font:inherit;padding:4px}#inlineEditor footer{display:flex;gap:5px;justify-content:flex-end}#inlineEditor button{padding:4px 8px}dialog{background:#26364b;color:white;border:1px solid #526174;border-radius:14px;padding:22px;width:min(420px,92vw)}dialog::backdrop{background:#0008}dialog input{width:100%;margin:12px 0}dialog footer{display:flex;justify-content:flex-end;gap:8px}#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:#26364b;color:white;padding:12px 20px;border-radius:9px;box-shadow:0 4px 20px #0005;pointer-events:none} 
+/* Responsive layout: keep the full desktop toolset available on phones */
+@media (max-width: 700px) {
+  html, body { width:100%; height:100%; min-height:100%; overflow:hidden; }
+  body { height:100dvh; min-height:100dvh; }
+  header {
+    flex:0 0 auto;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    white-space:nowrap;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    gap:6px;
+    padding:7px;
+  }
+  header > * { flex:0 0 auto; }
+  header b { font-size:13px; }
+  #status {
+    margin-left:0;
+    max-width:130px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:11px;
+  }
+  header button, header select { min-height:40px; }
+  nav#tools {
+    flex:0 0 auto;
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    overflow-x:auto;
+    overflow-y:hidden;
+    white-space:nowrap;
+    max-width:100%;
+    min-height:54px;
+    padding:6px 7px;
+    gap:6px;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    overscroll-behavior-x:contain;
+    background:#1b293b;
+    border-top:1px solid #34465d;
+    border-bottom:1px solid #34465d;
+    position:relative;
+    z-index:3;
+  }
+  #tools > * { flex:0 0 auto; }
+  #tools button, #tools select, #tools input, #tools label {
+    min-height:40px;
+    font-size:13px;
+  }
+  #tools button { padding:8px 10px; }
+  #tools input[type="number"] { width:56px !important; }
+  #tools label { display:flex; align-items:center; gap:4px; }
+  main {
+    flex:1 1 auto;
+    min-height:0;
+    min-width:0;
+    position:relative;
+    overflow:hidden;
+  }
+  #stage { flex:1 1 auto; min-width:0; min-height:0; width:100%; }
+  #svg { width:100%; height:100%; touch-action:none; }
+  aside#chat {
+    position:absolute;
+    right:8px;
+    bottom:8px;
+    top:auto;
+    width:min(92vw,360px);
+    height:min(58dvh,480px);
+    max-height:calc(100% - 16px);
+    z-index:8;
+    box-shadow:0 8px 28px #0008;
+    border:1px solid #526174;
+    border-radius:14px;
+  }
+  #gate { padding:16px; }
+  #gate form {
+    width:min(100%,420px);
+    max-height:calc(100dvh - 32px);
+    overflow-y:auto;
+    padding:22px 18px;
+  }
+  #login h2 { margin:0 0 10px; font-size:22px; }
+  #login input {
+    display:block;
+    width:100%;
+    min-height:46px;
+    margin:10px 0;
+    font-size:16px;
+  }
+  #login button {
+    width:100%;
+    min-height:46px;
+    margin-top:4px;
+    font-size:16px;
+  }
+  #error { max-width:100%; overflow-wrap:anywhere; }
+  #inlineEditor {
+    max-width:calc(100vw - 24px);
+    max-height:60dvh;
+    overflow:auto;
+  }
+  #inlineEditor footer { flex-wrap:wrap; }
+  #inlineEditor footer label { display:flex; align-items:center; gap:4px; }
+  dialog { max-width:calc(100vw - 24px); }
+  #toast {
+    width:calc(100vw - 32px);
+    text-align:center;
+    bottom:max(14px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 380px) {
+  header b { font-size:12px; }
+  #tools button { padding:7px 8px; }
+  #status { max-width:95px; }
+}
+@media (orientation:landscape) and (max-height:500px) and (max-width:900px) {
+  header { padding:4px 6px; }
+  nav#tools { min-height:46px; padding:4px 6px; }
+  #tools button, #tools select, #tools input, #tools label { min-height:36px; }
+  #gate form { padding:14px 18px; }
+}
+
+
+#mobileToolsToggle { display:none; }
+@media (max-width:700px) {
+  #mobileToolsToggle {
+    display:block;
+    position:static;
+    flex:0 0 auto;
+    align-self:flex-start;
+    margin:4px 8px;
+    min-height:44px;
+    padding:8px 14px;
+    border:1px solid #6682a6;
+    border-radius:12px;
+    background:#263d59;
+    color:#fff;
+    font-weight:600;
+  }
+  body.tools-collapsed nav#tools { display:none !important; }
+  aside#chat { overflow-y:auto; }
+  #chat #messages { min-height:0; }
+  #chat #send { display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+  #chat #send button, #chat #notify { width:100%; min-height:44px; flex-shrink:0; }
+}
+
+</style><header><b>◈ TRIZ BCI Board · v0.6</b><select id="projects" title="Проект"></select><button id="folderToggle">📁 Папки</button><button id="newProject">＋ Доска</button><button id="renameProject">Переименовать</button><button id="deleteProject">Удалить доску</button><span id="status">Локальный режим</span><button id="chatToggle">Чат</button><button id="soundToggle" type="button" title="Звуковые сигналы на этом устройстве">🔕 Звук выключен</button><button id="logout">Выход</button></header><nav id="tools" aria-label="Панель инструментов" title="На телефоне прокручивайте панель инструментов влево и вправо"><button data-tool="select">↖ Выбор</button><button data-tool="pan">✋ Полотно</button><button data-tool="pen">✎ Перо</button><button data-tool="text">Текст</button><button data-tool="node">Блок карты</button><button id="treeRoot">＋ Дерево</button><button id="treeChild">＋ Ветвь</button><button id="treeLayout">Разложить дерево</button><button id="treeExample">Пример ЭЭГ</button><button data-tool="link">Связь</button><button data-tool="rect">□</button><button data-tool="ellipse">○</button><button data-tool="line">╱ Прямая</button><button data-tool="arrow">↗ Стрелка</button><button data-tool="doublearrow">↔ Двойная</button><button data-tool="curve">∿ Кривая</button><button data-tool="elbow">┐ Угловая</button><button data-tool="triangle">△</button><button data-tool="diamond">◇</button><button data-tool="hexagon">⬡</button><button data-tool="star">☆</button><select id="lineStyle" title="Тип линии"><option value="solid">Сплошная</option><option value="dash">Штриховая</option><option value="dot">Пунктирная</option><option value="dashdot">Штрихпунктирная</option></select><button data-tool="erase">Ластик</button><input id="color" type="color" value="#2563eb" title="Цвет"><input id="width" type="number" min="1" max="40" value="3" style="width:60px" title="Толщина"><label title="Размер шрифта">Шрифт <input id="fontSize" type="number" min="8" max="200" value="18" style="width:70px"></label><button id="image">Фото</button><input id="file" type="file" accept="image/*" hidden><button id="undo">↶</button><button id="redo">↷</button><button id="minus">−</button><button id="plus">+</button><button id="home">100%</button><select id="pattern"><option value="dots">Точки</option><option value="grid">Клетка</option><option value="cube">Кубы</option><option value="hex">Соты</option><option value="tri">Треугольники</option><option value="none">Чистая</option></select><select id="material"><option value="#4c98a8">Бирюзовая</option><option value="#fafafa">Белая доска</option><option value="#292d35">Графит</option><option value="#fff2d5">Бумага</option><option value="#174b80">Чертёж</option><option value="#c7a47b">Крафт</option><option value="#23483c">Меловая</option></select><button id="export">SVG</button><button id="backup">JSON</button><button id="restore">Импорт</button><input id="importFile" type="file" accept=".json" hidden></nav><button id="mobileToolsToggle" type="button" aria-controls="tools" aria-expanded="true">☰ Инструменты</button><main><div id="stage"><svg id="svg" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="pat" patternUnits="userSpaceOnUse" width="24" height="24"></pattern></defs><rect id="bg" width="100%" height="100%"/><rect id="grid" width="100%" height="100%" fill="url(#pat)"/><g id="world"></g></svg><div id="inlineEditor"><textarea id="inlineText" placeholder="Введите текст…"></textarea><footer><label>Размер <input id="editorSize" type="number" min="8" max="200" value="18" style="width:70px"></label><button id="inlineCancel">Отмена</button><button id="inlineOK">Готово</button></footer></div></div><aside id="chat" hidden style="display:none"><b>Общий чат участников</b><input id="name" placeholder="Ваше имя"><div id="messages"></div><form id="send"><input id="msg" placeholder="Сообщение" required style="width:100%"><button>Отправить</button></form><button id="notify">Разрешить уведомления</button></aside></main><div id="gate"><form id="login"><h2>TRIZ BCI Board</h2><p>Вход участника</p><input id="email" type="email" autocomplete="username" placeholder="Электронная почта" required><input id="password" type="password" autocomplete="current-password" placeholder="Пароль Firebase" required><button>Войти</button><p id="error"></p></form></div><dialog id="boardDialog"><form id="dialogForm"><b id="dialogTitle"></b><input id="dialogInput" autocomplete="off"><footer><button type="button" id="dialogCancel">Отмена</button><button type="submit">Готово</button></footer></form></dialog><dialog id="folderDialog" style="max-width:520px;width:calc(100% - 24px);background:#1e2d40;color:#e9eff8;border:1px solid #526174;border-radius:14px;padding:18px">
+<form id="folderForm">
+<h3 style="margin-top:0">Папки TRIZ BCI</h3>
+<p style="font-size:13px;color:#b9c8da">Создание личных и общих папок. Для общей папки укажи UID выбранных участников через запятую.</p>
+<input id="folderName" placeholder="Название папки" required maxlength="120" style="width:100%;margin:5px 0">
+<select id="folderType" style="width:100%;margin:5px 0"><option value="personal">Личная папка</option><option value="shared">Общая папка</option></select>
+<input id="folderMembers" placeholder="UID участников через запятую" style="width:100%;margin:5px 0">
+<select id="folderParent" style="width:100%;margin:5px 0"><option value="">Корневая папка</option></select>
+<div id="folderList" style="max-height:220px;overflow:auto;margin:10px 0"></div>
+<footer style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="folderClose">Закрыть</button><button type="submit">Создать папку</button></footer>
+</form></dialog><div id="toast" hidden role="status"></div><script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, setPersistence, browserLocalPersistence,
+  signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+  collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, where
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCdUN8ZYTgBy7T4VZMeItRhaV-Ql64euL8",
+  authDomain: "triz-board.firebaseapp.com",
+  projectId: "triz-board",
+  storageBucket: "triz-board.firebasestorage.app",
+  messagingSenderId: "565924919299",
+  appId: "1:565924919299:web:781d21e8a5eea89f5b7636"
+};
+window.addEventListener('error',event=>{
+  const errorBox=document.getElementById('error');
+  if(errorBox) errorBox.textContent='Ошибка приложения: '+(event.message||'неизвестная ошибка');
+  console.error(event.error||event.message);
+});
+window.addEventListener('unhandledrejection',event=>{
+  const errorBox=document.getElementById('error');
+  if(errorBox) errorBox.textContent='Ошибка подключения: '+(event.reason?.message||String(event.reason));
+  console.error(event.reason);
+});
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+let cloudUser = null, cloudEnabled = false, cloudApplying = false;
+let stopBoards = null, stopBoard = null, stopMessages = null;
+let cloudSaveTimer = null, cloudMessages = [], messageSnapshotReady=false;
+const memory=new Map(); let persistent=true; const store={getItem(k){try{return window.localStorage.getItem(k)}catch{persistent=false;return memory.get(k)??null}},setItem(k,v){try{window.localStorage.setItem(k,v)}catch(e){if(e.name==='QuotaExceededError')throw e;persistent=false;memory.set(k,String(v))}},removeItem(k){try{window.localStorage.removeItem(k)}catch{persistent=false;memory.delete(k)}}};
+
+const $=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg', svg=$('svg'), world=$('world');
+
+// Folder management v1. This creates folder metadata only; it does not yet enforce
+// per-folder privacy for boards/messages. Keep current Firestore rules until the
+// coordinated ACL release is installed and tested.
+let folderDocs=[];
+let stopFoldersOwner=null, stopFoldersShared=null;
+const folderDialog=$('folderDialog');
+$('folderToggle').addEventListener('click',async()=>{
+  if(!cloudUser||!cloudEnabled){toast('Сначала войдите в аккаунт');return;}
+  await refreshFolderDialog();
+  folderDialog.showModal();
+});
+$('folderClose').onclick=()=>folderDialog.close();
+async function refreshFolderDialog(){
+  const list=$('folderList'), parent=$('folderParent');
+  list.replaceChildren();
+  parent.replaceChildren(new Option('Корневая папка',''));
+  const visible=folderDocs.filter(f=>f.ownerUid===cloudUser.uid||(Array.isArray(f.memberUids)&&f.memberUids.includes(cloudUser.uid)));
+  for(const f of visible){
+    const row=document.createElement('div');
+    row.style.cssText='padding:8px;border-bottom:1px solid #526174;display:flex;justify-content:space-between;gap:8px';
+    const label=document.createElement('span');
+    label.textContent=(f.type==='shared'?'👥 ':'📁 ')+(f.parentId?'↳ ':'')+f.name;
+    const role=document.createElement('small');
+    role.textContent=f.ownerUid===cloudUser.uid?'Владелец':'Участник';
+    row.append(label,role);list.append(row);
+    parent.add(new Option(f.name,f.id));
+  }
+  if(!visible.length){const e=document.createElement('p');e.textContent='Папок пока нет. Создайте первую папку.';list.append(e);}
+}
+function startFolderSync(){
+  if(stopFoldersOwner)stopFoldersOwner();
+  if(stopFoldersShared)stopFoldersShared();
+  if(!cloudEnabled||!cloudUser)return;
+  const ownerQ=query(collection(db,'folders'),where('ownerUid','==',cloudUser.uid));
+  const sharedQ=query(collection(db,'folders'),where('memberUids','array-contains',cloudUser.uid));
+  let ownerRows=[],sharedRows=[];
+  const merge=()=>{const map=new Map([...ownerRows,...sharedRows].map(f=>[f.id,f]));folderDocs=[...map.values()];if(folderDialog.open)refreshFolderDialog();};
+  stopFoldersOwner=onSnapshot(ownerQ,s=>{ownerRows=s.docs.map(d=>({id:d.id,...d.data()}));merge();},e=>{console.error(e);toast('Не удалось загрузить личные папки: '+e.message);});
+  stopFoldersShared=onSnapshot(sharedQ,s=>{sharedRows=s.docs.map(d=>({id:d.id,...d.data()}));merge();},e=>{console.error(e);toast('Не удалось загрузить общие папки: '+e.message);});
+}
+$('folderForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!cloudUser||!cloudEnabled)return toast('Нет подключения к Firebase');
+  const name=$('folderName').value.trim(),type=$('folderType').value,parentId=$('folderParent').value||null;
+  const memberUids=[...new Set($('folderMembers').value.split(',').map(v=>v.trim()).filter(Boolean))];
+  if(!name)return;
+  if(type==='personal'&&memberUids.length)return toast('Для личной папки не указывайте участников');
+  if(type==='shared'&&!memberUids.includes(cloudUser.uid))memberUids.push(cloudUser.uid);
+  if(parentId&&!folderDocs.some(f=>f.id===parentId))return toast('Родительская папка не найдена или недоступна');
+  try{
+    await addDoc(collection(db,'folders'),{name,type,ownerUid:cloudUser.uid,memberUids,parentId,createdAt:serverTimestamp(),schemaVersion:1});
+    $('folderName').value='';$('folderMembers').value='';
+    toast('Папка создана');
+  }catch(err){console.error(err);toast('Не удалось создать папку: '+(err.code||err.message));}
+});
+
+// Звук включается отдельно на каждом устройстве после нажатия пользователя.
+let soundEnabled=store.getItem('triz-sound-enabled')==='1';
+let soundActivated=false;
+let soundContext=null;
+let boardSnapshotReady=false;
+let lastBoardSnapshotValue=null;
+const ownBoardValues=new Set();
+function updateSoundButton(){
+  const b=$('soundToggle');
+  if(b)b.textContent=soundEnabled?(soundActivated?'🔔 Звук включён':'🔔 Активировать звук'):'🔕 Звук выключен';
+}
+function playSoundAlert(kind='board'){
+  if(!soundEnabled)return;
+  try{
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass)return;
+    if(!soundContext)soundContext=new AudioContextClass();
+    if(soundContext.state!=='running')return;
+    const now=soundContext.currentTime;
+    const frequencies=kind==='message'?[1046,784]:[784];
+    frequencies.forEach((frequency,index)=>{
+      const oscillator=soundContext.createOscillator();
+      const gain=soundContext.createGain();
+      const start=now+index*0.16;
+      oscillator.type='sine';
+      oscillator.frequency.setValueAtTime(frequency,start);
+      gain.gain.setValueAtTime(0.0001,start);
+      gain.gain.exponentialRampToValueAtTime(0.12,start+0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+0.13);
+      oscillator.connect(gain);
+      gain.connect(soundContext.destination);
+      oscillator.start(start);
+      oscillator.stop(start+0.14);
+    });
+  }catch(err){console.warn('Sound alert unavailable',err);}
+}
+$('soundToggle').onclick=async()=>{
+  try{
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass){toast('Этот браузер не поддерживает звуковые сигналы');return;}
+    if(!soundContext)soundContext=new AudioContextClass();
+    await soundContext.resume();
+    if(!soundActivated){
+      soundActivated=true;
+      soundEnabled=true;
+    }else{
+      soundEnabled=!soundEnabled;
+    }
+    store.setItem('triz-sound-enabled',soundEnabled?'1':'0');
+    updateSoundButton();
+    if(soundEnabled)playSoundAlert('message');
+  }catch(err){toast('Не удалось включить звук: '+err.message);}
+};
+updateSoundButton();
+
+const mobileToolsToggle=$('mobileToolsToggle');
+if(mobileToolsToggle){
+  mobileToolsToggle.addEventListener('click',()=>{
+    const collapsed=document.body.classList.toggle('tools-collapsed');
+    mobileToolsToggle.textContent=collapsed?'☰ Показать инструменты':'Скрыть инструменты';
+    mobileToolsToggle.setAttribute('aria-expanded',String(!collapsed));
+  });
+}let data=[],history=[],future=[],tool='select',cam={x:0,y:0,z:1},drag=null,linkStart=null,selected=null;const indexKey='triz-projects-v2';let projects;try{projects=JSON.parse(store.getItem(indexKey))}catch{}if(!Array.isArray(projects)||!projects.length)projects=[{id:'legacy',name:'ТРИЗ BCI'}];let active=store.getItem('triz-active-v2');if(!projects.some(p=>p.id===active))active=projects[0].id;let key=active==='legacy'?'triz-board-v1':'triz-board-v2-'+active;function load(){try{return JSON.parse(store.getItem(key))||{}}catch{return {}}}let saved=load();data=saved.data||[];cam=saved.cam||cam;
+function cameraKey(){return 'triz-camera-v1-'+(cloudUser?.uid||'guest')+'-'+active}
+function restoreCamera(){try{const c=JSON.parse(store.getItem(cameraKey())||'null');cam=c&&Number.isFinite(c.x)&&Number.isFinite(c.y)&&Number.isFinite(c.z)?c:{x:0,y:0,z:1}}catch{cam={x:0,y:0,z:1}}}
+$('pattern').value=saved.pattern||'dots';$('material').value=saved.material||'#fafafa';function save(){
+  // Фиксируем ID и ключ именно той доски, которую сохраняем.
+  // Иначе отложенное сохранение после переключения/создания доски
+  // могло записать содержимое предыдущей доски в новую.
+  const saveBoardId=active;
+  const saveKey=key;
+  const saveCameraKey=cameraKey();
+  const savePattern=$('pattern').value;
+  const saveMaterial=$('material').value;
+  const state={data:JSON.parse(JSON.stringify(data)),cam:{...cam},pattern:savePattern,material:saveMaterial};
+  try{
+    store.setItem(saveKey,JSON.stringify(state));
+    store.setItem(saveCameraKey,JSON.stringify(cam));
+    $('status').textContent=persistent?'Локально сохранено':'Временный режим: экспортируйте JSON'
+  }catch{$('status').textContent='Ошибка локального сохранения'}
+  if(cloudEnabled && cloudUser && !cloudApplying){
+    const saveUser=cloudUser;
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer=setTimeout(async()=>{
+      try{
+        // Не отправляем отложенную запись, если пользователь уже вышел
+        // или сменился аккаунт.
+        if(!cloudUser || cloudUser.uid!==saveUser.uid)return;
+        const cloudState={data:state.data,pattern:state.pattern,material:state.material};
+        const value=JSON.stringify(cloudState);
+        if(value.length>800000){toast('Доска слишком большая для текущего лимита Firestore. Для изображений подключим Firebase Storage.');return;}
+        ownBoardValues.add(value);
+        if(ownBoardValues.size>20)ownBoardValues.delete(ownBoardValues.values().next().value);
+        await setDoc(doc(db,'objects',saveBoardId),{value});
+        const boardName=(projects.find(p=>p.id===saveBoardId)||{}).name||'Доска';
+        await setDoc(doc(db,'boards',saveBoardId),{
+          name:boardName,
+          pattern:savePattern, material:saveMaterial, archived:false
+        },{merge:true});
+        if(active===saveBoardId)$('status').textContent='☁ Сохранено в облако';
+      }catch(err){console.error(err);if(active===saveBoardId)$('status').textContent='Ошибка облачного сохранения';toast('Не удалось сохранить в облако: '+(err.code||err.message));}
+    },350);
+  }
+}function checkpoint(){history.push(JSON.stringify(data));if(history.length>50)history.shift();future=[]}function el(tag,attrs={},parent=world){let e=document.createElementNS(ns,tag);for(let [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.append(e);return e}function render(){world.replaceChildren();world.setAttribute('transform',`translate(${cam.x} ${cam.y}) scale(${cam.z})`);$('bg').setAttribute('fill',$('material').value);let p=$('pat');p.replaceChildren();let type=$('pattern').value;let w=24,h=24,paths={grid:'M24 0H0V24',tri:'M0 0H24M0 24L12 0L24 24H0',cube:'M0 0L24 14L48 0M24 14V42M0 28L24 42L48 28M0 28V56L24 70L48 56V28M24 70V84',hex:'M0 12L7 0H21L28 12L21 24H7Z M28 12H42M28 12L35 0M28 12L35 24'};if(type==='cube'){w=48;h=84}if(type==='hex'){w=42;h=24}p.setAttribute('width',w);p.setAttribute('height',h);p.setAttribute('patternTransform',`translate(${cam.x} ${cam.y}) scale(${cam.z})`);if(type==='dots')el('circle',{cx:12,cy:12,r:1,fill:'#8191a5',opacity:.5},p);else if(paths[type])el('path',{d:paths[type],stroke:'#8191a5','stroke-opacity':.45,fill:'none'},p);for(let o of [...data.filter(o=>o.type==='link'),...data.filter(o=>o.type!=='link')]){let g=el('g',{'data-id':o.id,transform:`translate(${o.x||0} ${o.y||0})`});let a={stroke:o.color,'stroke-width':o.width,fill:'none','stroke-linecap':'round','stroke-linejoin':'round'};if(o.style&&o.style!=='solid'){let w=o.width||3;a['stroke-dasharray']=({dash:[5*w,3*w],dot:[0,3*w],dashdot:[5*w,3*w,0,3*w]}[o.style]||[]).join(' ')}if(['line','arrow','doublearrow','curve','elbow'].includes(o.type)){let x=o.dx||0,y=o.dy||0;let d=o.type==='curve'?`M0 0 C${x/2} 0 ${x/2} ${y} ${x} ${y}`:o.type==='elbow'?`M0 0 H${x/2} V${y} H${x}`:`M0 0 L${x} ${y}`;el('path',{...a,d},g);if(['arrow','doublearrow'].includes(o.type)){let ang=Math.atan2(y,x),len=Math.min(Math.hypot(x,y)/3,Math.max(12,o.width*4));function head(px,py,angle){el('path',{...a,'stroke-dasharray':'none',d:`M${px-len*Math.cos(angle-.5)} ${py-len*Math.sin(angle-.5)} L${px} ${py} L${px-len*Math.cos(angle+.5)} ${py-len*Math.sin(angle+.5)}`},g)}head(x,y,ang);if(o.type==='doublearrow')head(0,0,ang+Math.PI)}}if(['triangle','diamond','hexagon','star'].includes(o.type)){let w=o.w,h=o.h,pts=o.type==='triangle'?[[.5,0],[1,1],[0,1]]:o.type==='diamond'?[[.5,0],[1,.5],[.5,1],[0,.5]]:o.type==='hexagon'?[[.25,0],[.75,0],[1,.5],[.75,1],[.25,1],[0,.5]]:Array.from({length:10},(_,i)=>{let a=i*Math.PI/5-Math.PI/2,r=i%2?.22:.5;return [.5+r*Math.cos(a),.5+r*Math.sin(a)]});el('polygon',{...a,points:pts.map(([x,y])=>[x*w,y*h].join(',')).join(' ')},g)}if(o.type==='pen')el('polyline',{...a,points:o.points.map(p=>p.join(',')).join(' ')},g);if(o.type==='rect')el('rect',{...a,width:o.w,height:o.h},g);if(o.type==='ellipse')el('ellipse',{...a,cx:o.w/2,cy:o.h/2,rx:o.w/2,ry:o.h/2},g);if(o.type==='image')el('image',{href:o.src,width:o.w,height:o.h},g);if(o.type==='text'||o.type==='node'){if(o.type==='node'&&(!o.tree||!o.parent||data.find(n=>n.id===o.parent)?.parent==null))el('rect',{width:o.w,height:o.h,rx:12,fill:o.tree?(o.parent?'#ffebc6':'#ffffff'):'#ffffff',stroke:o.tree?'none':o.color,'stroke-width':2},g);let fs=fontSize(o.fontSize),t=el('text',{x:o.type==='node'?12:0,y:fs+6,fill:o.tree&&o.parent&&data.find(n=>n.id===o.parent)?.parent?'#ffffff':o.type==='node'?'#172536':o.color,'font-size':fs},g);o.text.split('\n').forEach((s,i)=>{el('tspan',{x:o.type==='node'?12:0,dy:i?fs*1.25:0},t).textContent=s})}if(o.type==='link'){let f=data.find(n=>n.id===o.from),t=data.find(n=>n.id===o.to);if(f&&t&&o.tree){let right=t.x>=f.x, x=f.x+(right?f.w:0), y=f.y+f.h/2, X=t.x+(right?0:t.w),Y=t.y+t.h/2,m=(x+X)/2;el('path',{...a,d:`M${x} ${y} C${m} ${y} ${m} ${Y} ${X} ${Y}`},g)}else if(f&&t)el('line',{...a,x1:f.x+f.w/2,y1:f.y+f.h/2,x2:t.x+t.w/2,y2:t.y+t.h/2},g)}if(o.id===selected)g.setAttribute('opacity','.65')}}function point(e){let r=svg.getBoundingClientRect();return {x:(e.clientX-r.left-cam.x)/cam.z,y:(e.clientY-r.top-cam.y)/cam.z}}function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}function add(o){checkpoint();data.push({id:id(),color:$('color').value,width:+$('width').value||3,style:$('lineStyle').value,...o});render();save()}function setTool(t){tool=t;linkStart=null;document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t))}document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));const activePointers=new Map();
+let pinchState=null;
+const pointerDistance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const pointerMid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+svg.onpointerdown=e=>{
+  e.preventDefault();
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  try{svg.setPointerCapture(e.pointerId)}catch{}
+  if(activePointers.size===2){
+    drag=null;
+    const pts=[...activePointers.values()],r=svg.getBoundingClientRect(),mid=pointerMid(pts[0],pts[1]);
+    const center={x:mid.x-r.left,y:mid.y-r.top};
+    pinchState={distance:Math.max(1,pointerDistance(pts[0],pts[1])),cam:{...cam},center,
+      worldX:(center.x-cam.x)/cam.z,worldY:(center.y-cam.y)/cam.z};
+    return;
+  }
+  if(activePointers.size>2)return;
+  let p=point(e),target=e.target.closest('[data-id]'),o=target&&data.find(n=>n.id===target.dataset.id);
+  if(tool==='pan'||e.button===1){drag={pan:true,x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y}}
+  else if(tool==='erase'&&o){checkpoint();data=data.filter(n=>n.id!==o.id&&n.from!==o.id&&n.to!==o.id);render();save()}
+  else if(tool==='select'){selected=o?.id||null;if(o&&['text','node'].includes(o.type))$('fontSize').value=fontSize(o.fontSize);if(o&&o.type!=='link'){checkpoint();drag={o,x:p.x,y:p.y,ox:o.x,oy:o.y}}render()}
+  else if(tool==='link'&&o?.type==='node'){if(linkStart&&linkStart!==o.id){add({type:'link',from:linkStart,to:o.id});linkStart=null;selected=null;render()}else{linkStart=o.id;selected=o.id;render()}}
+  else if(tool==='text'||tool==='node'){if(o&&['text','node'].includes(o.type))openEditor(o.type,o,o);else openEditor(tool,p)}
+  else if(['pen','rect','ellipse','line','arrow','doublearrow','curve','elbow','triangle','diamond','hexagon','star'].includes(tool)){checkpoint();let obj={id:id(),type:tool,x:p.x,y:p.y,color:$('color').value,width:+$('width').value||3,style:$('lineStyle').value,points:[[0,0]],w:1,h:1,dx:0,dy:0};data.push(obj);drag={draw:true,o:obj,x:p.x,y:p.y}}
+};
+svg.onpointermove=e=>{
+  if(activePointers.has(e.pointerId))activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinchState&&activePointers.size>=2){
+    const pts=[...activePointers.values()].slice(0,2),r=svg.getBoundingClientRect();
+    const dist=Math.max(1,pointerDistance(pts[0],pts[1])),mid=pointerMid(pts[0],pts[1]);
+    const center={x:mid.x-r.left,y:mid.y-r.top};
+    const z=Math.max(.03,Math.min(20,pinchState.cam.z*dist/pinchState.distance));
+    cam.z=z;cam.x=center.x-pinchState.worldX*z;cam.y=center.y-pinchState.worldY*z;
+    render();return;
+  }
+  if(!drag||activePointers.size>1)return;
+  let p=point(e),d=drag;
+  if(d.pan){cam.x=d.cx+e.clientX-d.x;cam.y=d.cy+e.clientY-d.y}
+  else if(d.draw){if(d.o.type==='pen')d.o.points.push([p.x-d.x,p.y-d.y]);else if(['line','arrow','doublearrow','curve','elbow'].includes(d.o.type)){d.o.dx=p.x-d.x;d.o.dy=p.y-d.y}else{d.o.x=Math.min(p.x,d.x);d.o.y=Math.min(p.y,d.y);d.o.w=Math.abs(p.x-d.x);d.o.h=Math.abs(p.y-d.y)}}
+  else{d.o.x=d.ox+p.x-d.x;d.o.y=d.oy+p.y-d.y}
+  render();
+};
+function finishPointer(e){
+  activePointers.delete(e.pointerId);
+  if(pinchState){
+    if(activePointers.size<2){pinchState=null;save()}
+    drag=null;return;
+  }
+  if(drag&&activePointers.size===0){drag=null;save()}
+}
+svg.onpointerup=finishPointer;
+svg.onpointercancel=finishPointer;
+svg.ondblclick=e=>{let o=data.find(n=>n.id===(e.target.closest('[data-id]')?.dataset.id||selected));if(o&&['node','text'].includes(o.type))openEditor(o.type,o,o)};
+function fontSize(v){return Math.max(8,Math.min(200,Number(v)||18))}function textDimensions(t,fs){let ctx=document.createElement('canvas').getContext('2d');ctx.font=fs+'px system-ui';let lines=t.split('\n');return {w:Math.max(150,...lines.map(s=>ctx.measureText(s).width+28)),h:Math.max(55,lines.length*fs*1.25+20)}}
+$('fontSize').onchange=()=>{let fs=fontSize($('fontSize').value);$('fontSize').value=fs;let o=data.find(n=>n.id===selected);if(o&&['text','node'].includes(o.type)){checkpoint();Object.assign(o,{fontSize:fs},textDimensions(o.text,fs));render();save()}};
+$('editorSize').oninput=()=>{$('inlineText').style.fontSize=Math.max(10,Math.min(200,fontSize($('editorSize').value)*cam.z))+'px'};
+let editing=null,toastTimer;function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500)}
+function openEditor(type,p,o=null){if(editing)finishEditor(true);editing={type,x:p.x,y:p.y,o,project:active,color:o?.color||$('color').value};let box=$('inlineEditor'),t=$('inlineText');box.style.display='block';box.style.width=Math.min($('stage').clientWidth-12,Math.max(210,(o?.w||200)*cam.z))+'px';box.style.left=Math.max(0,Math.min(p.x*cam.z+cam.x,$('stage').clientWidth-box.offsetWidth))+'px';box.style.top=Math.max(0,Math.min(p.y*cam.z+cam.y,$('stage').clientHeight-110))+'px';t.value=o?.text||'';$('editorSize').value=fontSize(o?.fontSize??$('fontSize').value);$('editorSize').oninput();t.focus();t.select()}
+function finishEditor(commit){if(!editing)return;let e=editing,t=$('inlineText').value;editing=null;$('inlineEditor').style.display='none';if(!commit||!t.trim()||e.project!==active)return;let fs=fontSize($('editorSize').value),{w,h}=textDimensions(t,fs);$('fontSize').value=fs;if(e.o){checkpoint();Object.assign(e.o,{text:t,w,h,fontSize:fs});render();save()}else add({type:e.type,x:e.x,y:e.y,text:t,w,h,fontSize:fs,color:e.color});setTool('select')}
+$('inlineOK').onclick=()=>finishEditor(true);$('inlineCancel').onclick=()=>finishEditor(false);$('inlineText').onkeydown=e=>{if(e.key==='Escape'||(e.key==='Enter'&&!e.shiftKey)){e.preventDefault();e.stopPropagation();finishEditor(e.key==='Enter')}};
+function ask(title,value=null){return new Promise(resolve=>{let d=$('boardDialog'),i=$('dialogInput');$('dialogTitle').textContent=title;i.hidden=value===null;i.value=value||'';let result=null;d.onclose=()=>resolve(result);$('dialogForm').onsubmit=e=>{e.preventDefault();result=value===null?true:i.value;d.close()};$('dialogCancel').onclick=()=>d.close();d.showModal();if(value!==null){i.focus();i.select()}})}
+function zoom(f,x=svg.clientWidth/2,y=svg.clientHeight/2){let z=Math.max(.03,Math.min(20,cam.z*f));cam.x=x-(x-cam.x)*z/cam.z;cam.y=y-(y-cam.y)*z/cam.z;cam.z=z;render();save()}svg.addEventListener('wheel',e=>{e.preventDefault();let r=svg.getBoundingClientRect();zoom(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});$('plus').onclick=()=>zoom(1.25);$('minus').onclick=()=>zoom(.8);$('home').onclick=()=>{cam={x:0,y:0,z:1};render();save()};$('undo').onclick=()=>{if(history.length){future.push(JSON.stringify(data));data=JSON.parse(history.pop());render();save()}};$('redo').onclick=()=>{if(future.length){history.push(JSON.stringify(data));data=JSON.parse(future.pop());render();save()}};$('lineStyle').onchange=()=>{let o=data.find(n=>n.id===selected);if(o){checkpoint();o.style=$('lineStyle').value;render();save()}};$('pattern').onchange=$('material').onchange=()=>{render();save()};$('image').onclick=()=>$('file').click();$('file').onchange=()=>{let f=$('file').files[0];if(!f)return;let origin=active,r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{if(origin!==active){toast('Доска изменилась, загрузите фото повторно');return}let w=Math.min(600,im.width);add({type:'image',x:(100-cam.x)/cam.z,y:(100-cam.y)/cam.z,w,h:w*im.height/im.width,src:r.result})};im.src=r.result};r.readAsDataURL(f);$('file').value=''};function download(s,type,name){let u=URL.createObjectURL(new Blob([s],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}$('export').onclick=()=>{let b=world.getBBox(),c=world.cloneNode(true);c.removeAttribute('transform');download(`<svg xmlns="${ns}" viewBox="${b.x-20} ${b.y-20} ${Math.max(40,b.width+40)} ${Math.max(40,b.height+40)}">${new XMLSerializer().serializeToString(c)}</svg>`,'image/svg+xml','board.svg')};$('backup').onclick=()=>download(JSON.stringify({data,cam,pattern:$('pattern').value,material:$('material').value}),'application/json','board.json');$('restore').onclick=()=>$('importFile').click();$('importFile').onchange=async()=>{try{let s=JSON.parse(await $('importFile').files[0].text());if(!Array.isArray(s.data))throw 0;checkpoint();data=s.data;cam=s.cam||cam;$('pattern').value=s.pattern||'dots';$('material').value=s.material||'#fafafa';render();save()}catch{toast('Неверный файл')}};document.addEventListener('keydown',e=>{if(editing||$('boardDialog').open||['INPUT','TEXTAREA'].includes(e.target.tagName))return;if(e.key==='Delete'&&selected){checkpoint();data=data.filter(o=>o.id!==selected&&o.from!==selected&&o.to!==selected);selected=null;render();save()}});$('login').onsubmit=async e=>{
+  e.preventDefault();
+  const button=$('login').querySelector('button[type="submit"],button:not([type])');
+  $('error').textContent='Проверяем данные входа…';
+  if(button){button.disabled=true;button.textContent='Входим…';}
+  try{
+    await signInWithEmailAndPassword(auth,$('email').value.trim(),$('password').value);
+    $('error').textContent='Вход подтверждён. Загружаем доски…';
+  }catch(err){
+    console.error('Firebase sign-in failed:',err);
+    const messages={
+      'auth/invalid-credential':'Неверная почта или пароль. Проверь адрес и пароль в Firebase Authentication → Users.',
+      'auth/user-not-found':'Такой адрес электронной почты не зарегистрирован в Firebase Authentication → Users.',
+      'auth/wrong-password':'Неверный пароль.',
+      'auth/invalid-email':'Проверь формат электронной почты.',
+      'auth/operation-not-allowed':'В Firebase не включён способ входа Email/Password.',
+      'auth/weak-password':'Пароль не соответствует требованиям Firebase.',
+      'auth/too-many-requests':'Слишком много попыток. Подожди и попробуй снова.',
+      'auth/unauthorized-domain':'Домен GitHub Pages не добавлен в Authorized domains Firebase Authentication.',
+      'auth/network-request-failed':'Ошибка сети при обращении к Firebase.'
+    };
+    $('error').textContent=(messages[err.code]||('Ошибка входа: '+(err.code||err.message||'неизвестная ошибка')));
+  }finally{
+    if(button){button.disabled=false;button.textContent='Войти';}
+  }
+};
+$('logout').onclick=async()=>{await signOut(auth);$('gate').style.display='grid';$('password').value='';};$('chatToggle').onclick=()=>{$('chat').style.display=$('chat').style.display==='none'?'flex':'none'};let chatKey=active==='legacy'?'triz-chat':'triz-chat-v2-'+active;
+function messages(){return cloudMessages.filter(m=>m.boardId===active);}
+const messagePalette=[
+  ['#254b68','#78c7ff'],['#55406d','#d2a6ff'],['#315c4b','#8ee0b2'],
+  ['#674b32','#ffc18a'],['#633d4d','#ff9fba'],['#46547a','#aebcff'],
+  ['#59612f','#d7e78b'],['#365d61','#8fe1df']
+];
+function messageColor(uid){
+  const value=String(uid||'guest');
+  let hash=0;
+  for(let i=0;i<value.length;i++)hash=((hash*31)+value.charCodeAt(i))>>>0;
+  return messagePalette[hash%messagePalette.length];
+}
+function showChat(){
+  const container=$('messages');
+  const wasNearBottom=container.scrollHeight-container.scrollTop-container.clientHeight<80;
+  container.replaceChildren();
+  for(const m of messages()){
+    const p=document.createElement('p');
+    const [background,accent]=messageColor(m.uid);
+    p.style.setProperty('--msg-bg',background);
+    p.style.setProperty('--msg-accent',accent);
+    if(m.uid===cloudUser?.uid)p.classList.add('msg-own');
+    const meta=document.createElement('div');
+    meta.className='msg-meta';
+    const author=document.createElement('span');
+    author.className='msg-author';
+    author.textContent=m.name||'Участник';
+    const when=document.createElement('span');
+    const date=m.created?.toDate?m.created.toDate():null;
+    when.textContent='· '+(date?date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}):'отправляется…');
+    meta.append(author,when);
+    const body=document.createElement('div');
+    body.className='msg-body';
+    body.textContent=m.text||'';
+    p.append(meta,body);
+    container.append(p);
+  }
+  if(wasNearBottom||container.children.length<=1)container.scrollTop=container.scrollHeight;
+}
+$('name').value=store.getItem('triz-name')||'';
+$('send').onsubmit=async e=>{
+  e.preventDefault();
+  if(!cloudEnabled||!cloudUser){toast('Сначала войдите в Firebase');return;}
+  let text=$('msg').value.trim();if(!text)return;
+  if(text.length>3500){toast('Сообщение слишком длинное (максимум 3500 символов)');return;}
+  let name=$('name').value.trim()||$('email')?.value?.split('@')[0]||'Участник';
+  store.setItem('triz-name',name);
+  try{
+    await addDoc(collection(db,'messages'),{
+      uid:cloudUser.uid,name,
+      text:JSON.stringify({boardId:active,text}),
+      created:serverTimestamp()
+    });
+    $('msg').value='';
+  }catch(err){toast('Не удалось отправить сообщение: '+(err.code||err.message));}
+};$('notify').onclick=async()=>{if(!('Notification'in window)){toast('Браузер не поддерживает уведомления');return}try{let p=await Notification.requestPermission();toast(p==='granted'?'Уведомления разрешены. Для доставки при полностью закрытом приложении потребуется Web Push (FCM)':'Уведомления не разрешены')}catch{toast('Для уведомлений нужен поддерживаемый браузер и HTTPS')}};function startBoardSync(){
+  if(stopBoard){stopBoard();stopBoard=null;}
+  boardSnapshotReady=false;
+  lastBoardSnapshotValue=null;
+  if(!cloudEnabled||!cloudUser)return;
+  stopBoard=onSnapshot(doc(db,'objects',active),snap=>{
+    if(!snap.exists()){
+      const state={data,pattern:$('pattern').value,material:$('material').value};
+      const value=JSON.stringify(state);
+      if(value.length<=800000)setDoc(doc(db,'objects',active),{value}).catch(console.error);
+      return;
+    }
+    try{
+      const incomingValue=snap.data().value||'{}';
+      if(boardSnapshotReady && incomingValue!==lastBoardSnapshotValue){
+        if(ownBoardValues.has(incomingValue))ownBoardValues.delete(incomingValue);
+        else playSoundAlert('board');
+      }
+      lastBoardSnapshotValue=incomingValue;
+      boardSnapshotReady=true;
+      const state=JSON.parse(incomingValue);
+      if(drag||editing)return;
+      cloudApplying=true;
+      data=Array.isArray(state.data)?state.data:[];
+      // Камера (масштаб и смещение) локальная: не принимаем её из облака.
+      $('pattern').value=state.pattern||'dots';
+      $('material').value=state.material||'#fafafa';
+      store.setItem(key,JSON.stringify({...state,cam}));
+      render();cloudApplying=false;
+      $('status').textContent='☁ Синхронизировано';
+    }catch(err){cloudApplying=false;console.error(err);toast('Не удалось прочитать состояние доски');}
+  },err=>{console.error(err);toast('Ошибка синхронизации доски: '+err.message);});
+}
+function startMessageSync(){
+  if(stopMessages){stopMessages();stopMessages=null;}
+  if(!cloudEnabled)return;
+  messageSnapshotReady=false;
+  stopMessages=onSnapshot(query(collection(db,'messages'),orderBy('created','asc'),limit(150)),snap=>{
+    const parsed=snap.docs.map(d=>({id:d.id,...d.data()})).map(m=>{
+      try{const payload=JSON.parse(m.text);if(payload&&typeof payload==='object')return {...m,boardId:payload.boardId,text:payload.text};}catch{}
+      return {...m,boardId:'legacy'};
+    });
+    if(messageSnapshotReady){
+      for(const change of snap.docChanges()){
+        if(change.type!=='added')continue;
+        const m=parsed.find(x=>x.id===change.doc.id);
+        if(!m||m.uid===cloudUser?.uid||m.boardId!==active)continue;
+        playSoundAlert('message');
+        if('Notification'in window&&Notification.permission==='granted'){
+          try{
+            const n=new Notification('Новое сообщение · '+(m.name||'Участник'),{
+              body:m.text,tag:'triz-chat-'+m.id,renotify:false
+            });
+            n.onclick=()=>{window.focus();$('chat').style.display='flex';n.close();};
+          }catch(err){console.warn('Notification unavailable',err);}
+        }
+      }
+    }
+    cloudMessages=parsed;
+    messageSnapshotReady=true;
+    showChat();
+  },err=>{console.error(err);toast('Ошибка загрузки чата: '+err.message);});
+}
+function startCloud(){
+  cloudEnabled=true;
+  if(stopBoards)stopBoards();
+  stopBoards=onSnapshot(collection(db,'boards'),async snap=>{
+    const incoming=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.archived!==true);
+    if(!incoming.length){
+      for(const p of projects){
+        await setDoc(doc(db,'boards',p.id),{name:p.name,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true});
+      }
+      const state={data,pattern:$('pattern').value,material:$('material').value};
+      const value=JSON.stringify(state);
+      if(value.length<=800000)await setDoc(doc(db,'objects',active),{value},{merge:true});
+      return;
+    }
+    projects=incoming.map(p=>({id:p.id,name:p.name||'Без названия'}));
+    if(!projects.some(p=>p.id===active)){
+      active=projects[0].id;
+      key=active==='legacy'?'triz-board-v1':'triz-board-v2-'+active;
+      chatKey=active==='legacy'?'triz-chat':'triz-chat-v2-'+active;
+    }
+    projectMenu();
+    persistProjectsLocal();
+    startBoardSync();showChat();
+  },err=>{console.error(err);toast('Ошибка загрузки списка досок: '+err.message);});
+  startMessageSync();
+}
+function persistProjectsLocal(){
+  try{store.setItem(indexKey,JSON.stringify(projects));store.setItem('triz-active-v2',active);}catch{}
+}function projectMenu(){ $('projects').replaceChildren();for(const p of projects){let o=document.createElement('option');o.value=p.id;o.textContent=p.name;$('projects').append(o)}$('projects').value=active; }function persistProjects(){
+  persistProjectsLocal();projectMenu();
+  if(cloudEnabled&&cloudUser){
+    const p=projects.find(p=>p.id===active);
+    if(p)setDoc(doc(db,'boards',active),{name:p.name,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true}).catch(err=>toast('Не удалось сохранить название доски: '+err.message));
+  }
+}function switchProject(next,keep=true){if(drag)return;finishEditor(false);if(keep)save();active=next;key=active==='legacy'?'triz-board-v1':'triz-board-v2-'+active;chatKey=active==='legacy'?'triz-chat':'triz-chat-v2-'+active;let s=load();data=s.data||[];restoreCamera();$('pattern').value=s.pattern||'dots';$('material').value=s.material||'#fafafa';history=[];future=[];selected=null;linkStart=null; $('msg').value='';persistProjects();render();showChat();if(cloudEnabled)startBoardSync()}$('projects').onchange=()=>switchProject($('projects').value);
+$('newProject').onclick=async()=>{
+  const name=await ask('Название новой доски','Новая доска');
+  if(!name?.trim())return;
+  if(!cloudEnabled||!cloudUser){
+    toast('Для создания общей облачной доски сначала войдите в аккаунт');
+    return;
+  }
+  try{
+    // Сначала сохраняем текущую доску, затем создаём два новых независимых документа.
+    save();
+    const boardId=(crypto.randomUUID?crypto.randomUUID():id()).replaceAll('/','-');
+    const board={id:boardId,name:name.trim()};
+    await setDoc(doc(db,'boards',boardId),{
+      name:board.name,
+      pattern:'dots',
+      material:'#fafafa',
+      archived:false
+    });
+    const initialState={data:[],pattern:'dots',material:'#fafafa'};
+    await setDoc(doc(db,'objects',boardId),{value:JSON.stringify(initialState)});
+    projects.push(board);
+    active=boardId;
+    key='triz-board-v2-'+active;
+    chatKey='triz-chat-v2-'+active;
+    data=[];
+    cam={x:0,y:0,z:1};
+    // У новой доски собственная камера; прежний масштаб другой доски не переносится.
+    store.removeItem(cameraKey());
+    restoreCamera();
+    $('pattern').value='dots';
+    $('material').value='#fafafa';
+    history=[];future=[];selected=null;linkStart=null;
+    $('msg').value='';
+    store.setItem(key,JSON.stringify({...initialState,cam}));
+    persistProjects();
+    render();
+    showChat();
+    startBoardSync();
+    toast('Создана отдельная пустая доска: '+board.name);
+  }catch(err){
+    console.error('Board creation failed',err);
+    toast('Не удалось создать доску: '+(err.code||err.message));
+  }
+};$('renameProject').onclick=async()=>{let p=projects.find(p=>p.id===active),name=await ask('Название доски',p.name);if(name?.trim()){p.name=name.trim();persistProjects()}};$('deleteProject').onclick=async()=>{
+  if(projects.length===1){toast('Оставьте хотя бы одну доску');return;}
+  if(!await ask('Архивировать эту доску?'))return;
+  try{if(cloudEnabled)await updateDoc(doc(db,'boards',active),{archived:true});}catch(err){toast('Не удалось архивировать доску: '+err.message);return;}
+  store.removeItem(key);store.removeItem(chatKey);
+  projects=projects.filter(p=>p.id!==active);switchProject(projects[0].id,false);
+};persistProjects();setTool('select');render();showChat();if(!persistent)$('status').textContent='Временный режим: экспортируйте JSON';
+
+// Firebase session: browserLocalPersistence keeps the user signed in on this device.
+await setPersistence(auth,browserLocalPersistence);
+onAuthStateChanged(auth,async user=>{
+  cloudUser=user;
+  if(!user){
+    cloudEnabled=false;
+    if(stopBoards){stopBoards();stopBoards=null;}
+    if(stopBoard){stopBoard();stopBoard=null;}
+    if(stopMessages){stopMessages();stopMessages=null;}
+    if(stopFoldersOwner){stopFoldersOwner();stopFoldersOwner=null;}
+    if(stopFoldersShared){stopFoldersShared();stopFoldersShared=null;}
+    $('gate').style.display='grid';
+    $('status').textContent='Не выполнен вход';
+    return;
+  }
+  try{
+    const memberSnap=await getDoc(doc(db,'members',user.uid));
+    if(!memberSnap.exists()||memberSnap.data().active!==true){
+      await signOut(auth);
+      $('error').textContent='Для этого аккаунта доступ к доске не включён. Обратитесь к администратору.';
+      return;
+    }
+    $('gate').style.display='none';
+    restoreCamera();render();
+    $('status').textContent='Подключение к облаку…';
+    $('error').textContent='';
+    startCloud();
+    startFolderSync();
+  }catch(err){
+    console.error(err);
+    $('gate').style.display='grid';
+    $('error').textContent='Не удалось проверить доступ к профилю участника: '+(err.code||err.message);
+  }
+});
+function treeNode(text,parent=null){let fs=18,{w,h}=textDimensions(text,fs);let n={id:id(),type:'node',tree:true,parent:parent?.id||null,text,fontSize:fs,w,h,x:parent?parent.x+parent.w+100:(svg.clientWidth/2-cam.x)/cam.z,y:parent?parent.y:(svg.clientHeight/2-cam.y)/cam.z,color:'#ffffff',width:2};data.push(n);if(parent)data.push({id:id(),type:'link',tree:true,from:parent.id,to:n.id,color:'#e4f2f2',width:2,x:0,y:0});return n}
+function treeArrange(root){let seen=new Set();function walk(n,side,x,y){if(seen.has(n.id))return 0;seen.add(n.id);let children=data.filter(c=>c.tree&&c.type==='node'&&c.parent===n.id);n.x=x;n.y=y;let cursor=y;for(let c of children){let cx=side>0?x+n.w+85:x-c.w-85;cursor+=walk(c,side,cx,cursor)+18}let height=Math.max(n.h,cursor-y-18);n.y=y+(height-n.h)/2;return height}let kids=data.filter(n=>n.tree&&n.type==='node'&&n.parent===root.id);for(let side of [-1,1]){let group=kids.filter((_,i)=>(i%2?1:-1)===side),cursor=root.y;for(let n of group)cursor+=walk(n,side,side>0?root.x+root.w+100:root.x-n.w-100,cursor)+30;let shift=(cursor-root.y-30-root.h)/2;function move(n){n.y-=shift;data.filter(c=>c.tree&&c.type==='node'&&c.parent===n.id).forEach(move)}group.forEach(move)}}
+function treeSelected(){return data.find(n=>n.id===selected&&n.tree&&n.type==='node')}
+$('treeRoot').onclick=()=>{checkpoint();let n=treeNode('Главная тема');selected=n.id;render();save();setTool('select');openEditor('node',n,n)};
+$('treeChild').onclick=()=>{let p=treeSelected();if(!p)return toast('Выберите блок дерева');checkpoint();let n=treeNode('Новая ветвь',p);let root=p;while(root.parent&&data.find(c=>c.id===root.parent))root=data.find(c=>c.id===root.parent);treeArrange(root);selected=n.id;render();save();openEditor('node',n,n)};
+$('treeLayout').onclick=()=>{checkpoint();data.filter(n=>n.tree&&n.type==='node'&&!n.parent).forEach(treeArrange);render();save()};
+$('treeExample').onclick=()=>{checkpoint();$('material').value='#4c98a8';$('pattern').value='none';let root=treeNode('ЭЭГ-комплекс');for(let [name,...items] of [['Шлем','Основа','Форма','Давление'],['Датчики','Корпус','Контакт','Шумы'],['Гель','Нанесение','Высыхание','Очистка'],['Провода','Натяжение','Помехи'],['Процедура','Подготовка','Запись'],['ПО и ИИ','Фильтры','Данные','Обучение']]){let p=treeNode(name,root);items.forEach(t=>treeNode(t,p))}treeArrange(root);render();save()};
+</script></html>
