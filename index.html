@@ -162,7 +162,7 @@
 <select id="folderParent" style="width:100%;margin:5px 0"><option value="">Корневая папка</option></select>
 <div style="display:flex;align-items:center;gap:8px;margin:10px 0"><button type="button" id="folderUp" disabled>← Назад</button><span id="folderPath" style="font-size:13px;color:#b9c8da">Все папки</span></div>
 <div id="folderList" style="max-height:220px;overflow:auto;margin:10px 0"></div>
-<footer style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="folderClose">Закрыть</button><button type="submit">Создать папку</button></footer>
+<footer style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button type="button" id="folderNewBoard">＋ Создать доску здесь</button><span style="display:flex;gap:8px"><button type="button" id="folderClose">Закрыть</button><button type="submit">Создать папку</button></span></footer>
 </form></dialog><div id="toast" hidden role="status"></div><script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -244,7 +244,50 @@ async function refreshFolderDialog(){
     role.textContent=f.ownerUid===cloudUser.uid?'Владелец':'Участник';
     row.append(open,role);list.append(row);
   }
-  if(!children.length){const e=document.createElement('p');e.style.color='#b9c8da';e.textContent=currentFolderId?'В этой папке пока нет вложенных папок.':'Папок пока нет. Создайте первую папку.';list.append(e);}
+  const boardsHere=projects.filter(p=>(p.folderId||null)===(currentFolderId||null));
+  for(const board of boardsHere){
+    const row=document.createElement('div');
+    row.style.cssText='padding:8px;border-bottom:1px solid #526174;display:flex;align-items:center;gap:8px';
+    const open=document.createElement('button');
+    open.type='button';
+    open.style.cssText='flex:1;text-align:left;background:transparent;border:0;color:#e9eff8;padding:6px;cursor:pointer';
+    open.textContent='▧ '+board.name;
+    open.onclick=()=>{folderDialog.close();switchProject(board.id);};
+    const move=document.createElement('select');
+    move.title='Переместить доску в папку';
+    move.style.cssText='max-width:145px;font-size:12px;padding:5px';
+    move.add(new Option('Переместить…','__choose__'));
+    move.add(new Option('Все папки (корень)',''));
+    for(const f of visible){
+      const opt=new Option('📁 '+f.name,f.id);
+      move.add(opt);
+    }
+    move.value=board.folderId||'__choose__';
+    move.onchange=async()=>{
+      if(move.value==='__choose__')return;
+      const nextFolderId=move.value||null;
+      try{
+        await updateDoc(doc(db,'boards',board.id),{folderId:nextFolderId});
+        const local=projects.find(p=>p.id===board.id);
+        if(local)local.folderId=nextFolderId;
+        persistProjectsLocal();
+        toast(nextFolderId?'Доска перемещена в папку':'Доска перемещена в корень');
+        refreshFolderDialog();
+      }catch(err){
+        console.error(err);
+        toast('Не удалось переместить доску: '+(err.code||err.message));
+        move.value=board.folderId||'__choose__';
+      }
+    };
+    row.append(open,move);
+    list.append(row);
+  }
+  if(!children.length&&!boardsHere.length){
+    const e=document.createElement('p');
+    e.style.color='#b9c8da';
+    e.textContent=currentFolderId?'В этой папке пока нет досок или вложенных папок.':'Папок и досок пока нет.';
+    list.append(e);
+  }
 }
 $('folderUp').onclick=()=>{const current=folderDocs.find(f=>f.id===currentFolderId);currentFolderId=current?.parentId||null;refreshFolderDialog();};
 function startFolderSync(){
@@ -592,14 +635,14 @@ function startCloud(){
     const incoming=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.archived!==true);
     if(!incoming.length){
       for(const p of projects){
-        await setDoc(doc(db,'boards',p.id),{name:p.name,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true});
+        await setDoc(doc(db,'boards',p.id),{name:p.name,folderId:p.folderId||null,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true});
       }
       const state={data,pattern:$('pattern').value,material:$('material').value};
       const value=JSON.stringify(state);
       if(value.length<=800000)await setDoc(doc(db,'objects',active),{value},{merge:true});
       return;
     }
-    projects=incoming.map(p=>({id:p.id,name:p.name||'Без названия'}));
+    projects=incoming.map(p=>({id:p.id,name:p.name||'Без названия',folderId:p.folderId||null}));
     if(!projects.some(p=>p.id===active)){
       active=projects[0].id;
       key=active==='legacy'?'triz-board-v1':'triz-board-v2-'+active;
@@ -607,6 +650,7 @@ function startCloud(){
     }
     projectMenu();
     persistProjectsLocal();
+    if(folderDialog.open)refreshFolderDialog();
     startBoardSync();showChat();
   },err=>{console.error(err);toast('Ошибка загрузки списка досок: '+err.message);});
   startMessageSync();
@@ -617,23 +661,27 @@ function persistProjectsLocal(){
   persistProjectsLocal();projectMenu();
   if(cloudEnabled&&cloudUser){
     const p=projects.find(p=>p.id===active);
-    if(p)setDoc(doc(db,'boards',active),{name:p.name,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true}).catch(err=>toast('Не удалось сохранить название доски: '+err.message));
+    if(p)setDoc(doc(db,'boards',active),{name:p.name,folderId:p.folderId||null,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true}).catch(err=>toast('Не удалось сохранить название доски: '+err.message));
   }
 }function switchProject(next,keep=true){if(drag)return;finishEditor(false);if(keep)save();active=next;key=active==='legacy'?'triz-board-v1':'triz-board-v2-'+active;chatKey=active==='legacy'?'triz-chat':'triz-chat-v2-'+active;let s=load();data=s.data||[];restoreCamera();$('pattern').value=s.pattern||'dots';$('material').value=s.material||'#fafafa';history=[];future=[];selected=null;linkStart=null; $('msg').value='';persistProjects();render();showChat();if(cloudEnabled)startBoardSync()}$('projects').onchange=()=>switchProject($('projects').value);
-$('newProject').onclick=async()=>{
+async function createBoardInFolder(folderId=null){
   const name=await ask('Название новой доски','Новая доска');
   if(!name?.trim())return;
   if(!cloudEnabled||!cloudUser){
-    toast('Для создания общей облачной доски сначала войдите в аккаунт');
+    toast('Для создания облачной доски сначала войдите в аккаунт');
+    return;
+  }
+  if(folderId&&!folderDocs.some(f=>f.id===folderId)){
+    toast('Папка больше не доступна. Обновите список папок.');
     return;
   }
   try{
-    // Сначала сохраняем текущую доску, затем создаём два новых независимых документа.
     save();
     const boardId=(crypto.randomUUID?crypto.randomUUID():id()).replaceAll('/','-');
-    const board={id:boardId,name:name.trim()};
+    const board={id:boardId,name:name.trim(),folderId:folderId||null};
     await setDoc(doc(db,'boards',boardId),{
       name:board.name,
+      folderId:board.folderId,
       pattern:'dots',
       material:'#fafafa',
       archived:false
@@ -646,7 +694,6 @@ $('newProject').onclick=async()=>{
     chatKey='triz-chat-v2-'+active;
     data=[];
     cam={x:0,y:0,z:1};
-    // У новой доски собственная камера; прежний масштаб другой доски не переносится.
     store.removeItem(cameraKey());
     restoreCamera();
     $('pattern').value='dots';
@@ -658,12 +705,16 @@ $('newProject').onclick=async()=>{
     render();
     showChat();
     startBoardSync();
-    toast('Создана отдельная пустая доска: '+board.name);
+    if(folderDialog.open)folderDialog.close();
+    toast(folderId?'Доска создана внутри папки: '+board.name:'Создана отдельная пустая доска: '+board.name);
   }catch(err){
     console.error('Board creation failed',err);
     toast('Не удалось создать доску: '+(err.code||err.message));
   }
-};$('renameProject').onclick=async()=>{let p=projects.find(p=>p.id===active),name=await ask('Название доски',p.name);if(name?.trim()){p.name=name.trim();persistProjects()}};$('deleteProject').onclick=async()=>{
+}
+$('newProject').onclick=()=>createBoardInFolder(null);
+$('folderNewBoard').onclick=()=>createBoardInFolder(currentFolderId);
+$('renameProject').onclick=async()=>{let p=projects.find(p=>p.id===active),name=await ask('Название доски',p.name);if(name?.trim()){p.name=name.trim();persistProjects()}};$('deleteProject').onclick=async()=>{
   if(projects.length===1){toast('Оставьте хотя бы одну доску');return;}
   if(!await ask('Архивировать эту доску?'))return;
   try{if(cloudEnabled)await updateDoc(doc(db,'boards',active),{archived:true});}catch(err){toast('Не удалось архивировать доску: '+err.message);return;}
