@@ -160,6 +160,7 @@
 <select id="folderType" style="width:100%;margin:5px 0"><option value="personal">Личная папка</option><option value="shared">Общая папка</option></select>
 <input id="folderMembers" placeholder="UID участников через запятую" style="width:100%;margin:5px 0">
 <select id="folderParent" style="width:100%;margin:5px 0"><option value="">Корневая папка</option></select>
+<div style="display:flex;align-items:center;gap:8px;margin:10px 0"><button type="button" id="folderUp" disabled>← Назад</button><span id="folderPath" style="font-size:13px;color:#b9c8da">Все папки</span></div>
 <div id="folderList" style="max-height:220px;overflow:auto;margin:10px 0"></div>
 <footer style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="folderClose">Закрыть</button><button type="submit">Создать папку</button></footer>
 </form></dialog><div id="toast" hidden role="status"></div><script type="module">
@@ -206,10 +207,12 @@ const $=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg', svg=$(
 // per-folder privacy for boards/messages. Keep current Firestore rules until the
 // coordinated ACL release is installed and tested.
 let folderDocs=[];
+let currentFolderId=null;
 let stopFoldersOwner=null, stopFoldersShared=null;
 const folderDialog=$('folderDialog');
 $('folderToggle').addEventListener('click',async()=>{
   if(!cloudUser||!cloudEnabled){toast('Сначала войдите в аккаунт');return;}
+  currentFolderId=null;
   await refreshFolderDialog();
   folderDialog.showModal();
 });
@@ -219,18 +222,31 @@ async function refreshFolderDialog(){
   list.replaceChildren();
   parent.replaceChildren(new Option('Корневая папка',''));
   const visible=folderDocs.filter(f=>f.ownerUid===cloudUser.uid||(Array.isArray(f.memberUids)&&f.memberUids.includes(cloudUser.uid)));
+  const current=currentFolderId?visible.find(f=>f.id===currentFolderId):null;
+  if(currentFolderId&&!current)currentFolderId=null;
+  const path=[];let cursor=currentFolderId;
+  while(cursor){const item=visible.find(f=>f.id===cursor);if(!item)break;path.unshift(item.name);cursor=item.parentId||null;}
+  $('folderPath').textContent=path.length?'Все папки / '+path.join(' / '):'Все папки';
+  $('folderUp').disabled=!currentFolderId;
   for(const f of visible){
+    const indent=f.parentId?'↳ ':'';
+    parent.add(new Option(indent+f.name,f.id));
+  }
+  const children=visible.filter(f=>(f.parentId||null)===(currentFolderId||null));
+  for(const f of children){
     const row=document.createElement('div');
-    row.style.cssText='padding:8px;border-bottom:1px solid #526174;display:flex;justify-content:space-between;gap:8px';
-    const label=document.createElement('span');
-    label.textContent=(f.type==='shared'?'👥 ':'📁 ')+(f.parentId?'↳ ':'')+f.name;
+    row.style.cssText='padding:8px;border-bottom:1px solid #526174;display:flex;align-items:center;justify-content:space-between;gap:8px';
+    const open=document.createElement('button');
+    open.type='button';open.style.cssText='flex:1;text-align:left;background:transparent;border:0;color:#e9eff8;padding:6px;cursor:pointer';
+    open.textContent=(f.type==='shared'?'👥 ':'📁 ')+f.name+'  ›';
+    open.onclick=()=>{currentFolderId=f.id;refreshFolderDialog();};
     const role=document.createElement('small');
     role.textContent=f.ownerUid===cloudUser.uid?'Владелец':'Участник';
-    row.append(label,role);list.append(row);
-    parent.add(new Option(f.name,f.id));
+    row.append(open,role);list.append(row);
   }
-  if(!visible.length){const e=document.createElement('p');e.textContent='Папок пока нет. Создайте первую папку.';list.append(e);}
+  if(!children.length){const e=document.createElement('p');e.style.color='#b9c8da';e.textContent=currentFolderId?'В этой папке пока нет вложенных папок.':'Папок пока нет. Создайте первую папку.';list.append(e);}
 }
+$('folderUp').onclick=()=>{const current=folderDocs.find(f=>f.id===currentFolderId);currentFolderId=current?.parentId||null;refreshFolderDialog();};
 function startFolderSync(){
   if(stopFoldersOwner)stopFoldersOwner();
   if(stopFoldersShared)stopFoldersShared();
@@ -255,6 +271,8 @@ $('folderForm').addEventListener('submit',async e=>{
     await addDoc(collection(db,'folders'),{name,type,ownerUid:cloudUser.uid,memberUids,parentId,createdAt:serverTimestamp(),schemaVersion:1});
     $('folderName').value='';$('folderMembers').value='';
     toast('Папка создана');
+    currentFolderId=parentId||null;
+    await refreshFolderDialog();
   }catch(err){console.error(err);toast('Не удалось создать папку: '+(err.code||err.message));}
 });
 
