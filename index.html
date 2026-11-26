@@ -206,7 +206,8 @@ function renderNotifications(){const count=$("notificationCount"),n=unreadNotifi
 function addAppNotification(item){appNotifications.push({...item,read:false,when:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})});if(appNotifications.length>100)appNotifications.shift();renderNotifications();}
 const memory=new Map(); let persistent=true; const store={getItem(k){try{return window.localStorage.getItem(k)}catch{persistent=false;return memory.get(k)??null}},setItem(k,v){try{window.localStorage.setItem(k,v)}catch(e){if(e.name==='QuotaExceededError')throw e;persistent=false;memory.set(k,String(v))}},removeItem(k){try{window.localStorage.removeItem(k)}catch{persistent=false;memory.delete(k)}}};
 
-const $=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg', svg=$('svg'), world=$('world');
+function $(id){return document.getElementById(id)}
+const ns='http://www.w3.org/2000/svg', svg=$('svg'), world=$('world');
 $("notificationToggle").onclick=()=>{$("notificationDialog").showModal();renderNotifications();};$("notificationClose").onclick=()=>$("notificationDialog").close();$("notificationMarkRead").onclick=()=>{appNotifications.forEach(n=>n.read=true);renderNotifications();};
 
 
