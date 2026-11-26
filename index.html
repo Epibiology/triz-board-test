@@ -209,6 +209,7 @@ const memory=new Map(); let persistent=true; const store={getItem(k){try{return 
 const $=id=>document.getElementById(id), ns='http://www.w3.org/2000/svg', svg=$('svg'), world=$('world');
 $("notificationToggle").onclick=()=>{$("notificationDialog").showModal();renderNotifications();};$("notificationClose").onclick=()=>$("notificationDialog").close();$("notificationMarkRead").onclick=()=>{appNotifications.forEach(n=>n.read=true);renderNotifications();};
 
+
 // Folder management v1. This creates folder metadata only; it does not yet enforce
 // per-folder privacy for boards/messages. Keep current Firestore rules until the
 // coordinated ACL release is installed and tested.
