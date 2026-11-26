@@ -166,6 +166,7 @@
 </form></dialog><dialog id="notificationDialog" style="max-width:520px;width:calc(100% - 24px);max-height:80vh;overflow:auto"><h3 style="margin-top:0">Уведомления</h3><div id="notificationList"></div><footer style="margin-top:12px"><button type="button" id="notificationMarkRead">Отметить всё прочитанным</button><button type="button" id="notificationClose">Закрыть</button></footer></dialog><div id="toast" hidden role="status"></div><script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getMessaging, getToken, onMessage, isSupported } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
 import {
   getAuth, setPersistence, browserLocalPersistence,
   signInWithEmailAndPassword, onAuthStateChanged, signOut
@@ -183,6 +184,11 @@ const firebaseConfig = {
   messagingSenderId: "565924919299",
   appId: "1:565924919299:web:781d21e8a5eea89f5b7636"
 };
+// ВСТАВЬТЕ СЮДА ПУБЛИЧНЫЙ VAPID KEY ИЗ Firebase → Cloud Messaging → Web Push certificates
+const VAPID_PUBLIC_KEY = "BGLlp6XpXZTguy2T_WsjGt64kL7m4iS77UM3aMRksz7ujQmbbj1WtED5YQ3zPASI0MdFCKCx_rmNQZF2-qLyix8";
+let fcmMessaging = null;
+let fcmForegroundUnsubscribe = null;
+
 window.addEventListener('error',event=>{
   const errorBox=document.getElementById('error');
   if(errorBox) errorBox.textContent='Ошибка приложения: '+(event.message||'неизвестная ошибка');
@@ -573,7 +579,30 @@ $('send').onsubmit=async e=>{
     });
     $('msg').value='';
   }catch(err){toast('Не удалось отправить сообщение: '+(err.code||err.message));}
-};$('notify').onclick=async()=>{if(!('Notification'in window)){toast('Браузер не поддерживает уведомления');return}try{let p=await Notification.requestPermission();toast(p==='granted'?'Уведомления разрешены. Для доставки при полностью закрытом приложении потребуется Web Push (FCM)':'Уведомления не разрешены')}catch{toast('Для уведомлений нужен поддерживаемый браузер и HTTPS')}};function startBoardSync(){
+};async function enablePushNotifications(){
+  try{
+    if(!cloudUser){toast('Сначала войдите в TRIZ BCI');return;}
+    if(!('serviceWorker' in navigator) || !('Notification' in window)){toast('Этот браузер не поддерживает Web Push');return;}
+    if(!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.startsWith('ВСТАВЬТЕ_')){toast('Сначала вставьте публичный VAPID-ключ в index.html');return;}
+    if(!(await isSupported())){toast('FCM Web Push не поддерживается этим браузером');return;}
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted'){toast('Разрешение на уведомления не выдано');return;}
+    const registration=await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+    fcmMessaging=getMessaging(firebaseApp);
+    const token=await getToken(fcmMessaging,{vapidKey:VAPID_PUBLIC_KEY,serviceWorkerRegistration:registration});
+    if(!token){toast('Firebase не выдал токен устройства');return;}
+    await setDoc(doc(db,'fcmTokens',cloudUser.uid+'_'+token.slice(-24)),{uid:cloudUser.uid,token,createdAt:serverTimestamp(),platform:'web'}, {merge:true});
+    if(fcmForegroundUnsubscribe)fcmForegroundUnsubscribe();
+    fcmForegroundUnsubscribe=onMessage(fcmMessaging,payload=>{
+      const title=payload.notification?.title||'TRIZ BCI';
+      const body=payload.notification?.body||'Новое событие в проекте';
+      addAppNotification({title,body,projectName:payload.data?.projectName||'TRIZ BCI',boardId:payload.data?.boardId||null});
+      playSoundAlert('message');
+    });
+    toast('Push-уведомления включены на этом устройстве');
+  }catch(err){console.error('FCM setup failed',err);toast('Не удалось включить push: '+(err.code||err.message));}
+}
+$('notify').onclick=enablePushNotifications;function startBoardSync(){
   if(stopBoard){stopBoard();stopBoard=null;}
   boardSnapshotReady=false;
   lastBoardSnapshotValue=null;
