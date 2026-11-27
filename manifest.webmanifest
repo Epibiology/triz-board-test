@@ -1,0 +1,24 @@
+
+{
+  "name": "3Z",
+  "short_name": "3Z",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#152131",
+  "theme_color": "#152131",
+  "icons": [
+    {
+      "src": "./3z-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./3z-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
