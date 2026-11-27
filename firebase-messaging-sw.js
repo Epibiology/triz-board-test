@@ -1,4 +1,3 @@
-
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
@@ -15,35 +14,35 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || "TRIZ BCI";
+  const data = payload.data || {};
   const options = {
     body: payload.notification?.body || "Новое событие в проекте",
-    data: payload.data || {}
+    icon: "./3z-icon.png",
+    badge: "./3z-icon.png",
+    tag: "3z-" + (data.type || "event") + "-" + (data.boardId || "general"),
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [200, 100, 200],
+    data
   };
-
   return self.registration.showNotification(title, options);
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-
-  const boardId = event.notification.data?.boardId;
-  const target = boardId
-    ? `./?board=${encodeURIComponent(boardId)}`
-    : "./";
+  const data = event.notification.data || {};
+  const target = new URL("./", self.location.href);
+  if (data.boardId) target.searchParams.set("board", data.boardId);
 
   event.waitUntil((async () => {
-    const windows = await clients.matchAll({
-      type: "window",
-      includeUncontrolled: true
-    });
-
+    const windows = await clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of windows) {
       if ("focus" in client) {
+        if ("navigate" in client) await client.navigate(target.href);
         await client.focus();
         return;
       }
     }
-
-    await clients.openWindow(target);
+    await clients.openWindow(target.href);
   })());
 });
