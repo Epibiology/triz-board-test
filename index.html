@@ -206,11 +206,18 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 
-// Push отправляется отдельно: ошибка уведомления не мешает работе доски или чата.
+  
 async function notifyWorker(type, payload = {}) {
-  if (!cloudUser) return;
+  if (!cloudUser) {
+    console.warn("3Z PUSH: пользователь не авторизован");
+    return;
+  }
+
   try {
     const idToken = await cloudUser.getIdToken();
+
+    console.log("3Z PUSH: отправляем", type, payload.boardId);
+
     const response = await fetch(NOTIFICATION_WORKER_URL, {
       method: "POST",
       headers: {
@@ -219,13 +226,23 @@ async function notifyWorker(type, payload = {}) {
       },
       body: JSON.stringify({ type, ...payload })
     });
+
+    const result = await response.json();
+
+    console.log("3Z PUSH RESULT:", response.status, result);
+
     if (!response.ok) {
-      console.warn("3Z Worker:", response.status, await response.text().catch(() => ""));
+      console.error("3Z PUSH ERROR:", result);
     }
+
+    return result;
+
   } catch (err) {
-    console.warn("3Z push notification failed:", err);
+    console.error("3Z PUSH FAILED:", err);
+    return null;
   }
 }
+
 
 let cloudUser = null, cloudEnabled = false, cloudApplying = false;
 let stopBoards = null, stopBoard = null, stopMessages = null;
