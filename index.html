@@ -715,12 +715,20 @@ function startCloud(){
   stopBoards=onSnapshot(collection(db,'boards'),async snap=>{
     const incoming=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.archived!==true);
     if(!incoming.length){
-      for(const p of projects){
-        await setDoc(doc(db,'boards',p.id),{name:p.name,folderId:p.folderId||null,pattern:$('pattern').value,material:$('material').value,archived:false},{merge:true});
-      }
-      const state={data,pattern:$('pattern').value,material:$('material').value};
-      const value=JSON.stringify(state);
-      if(value.length<=800000)await setDoc(doc(db,'objects',active),{value},{merge:true});
+      // Пустая облачная коллекция означает действительно пустое рабочее пространство.
+      // Не восстанавливаем удалённые доски из localStorage.
+      projects=[];
+      active='';
+      data=[];
+      try{
+        store.setItem(indexKey,JSON.stringify([]));
+        store.removeItem('triz-active-v2');
+      }catch(err){console.warn('Не удалось очистить локальный список досок',err);}
+      projectMenu();
+      render();
+      $('status').textContent='☁ Нет досок — создайте новую';
+      if(folderDialog.open)refreshFolderDialog();
+      showChat();
       return;
     }
     projects=incoming.map(p=>({id:p.id,name:p.name||'Без названия',folderId:p.folderId||null}));
