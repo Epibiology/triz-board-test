@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data || {}
   };
 
-  self.registration.showNotification(title, options);
+  return self.registration.showNotification(title, options);
 });
 
 self.addEventListener("notificationclick", (event) => {
