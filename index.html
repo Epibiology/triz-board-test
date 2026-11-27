@@ -184,6 +184,9 @@ const firebaseConfig = {
   messagingSenderId: "565924919299",
   appId: "1:565924919299:web:781d21e8a5eea89f5b7636"
 };
+// Cloudflare Worker для push-уведомлений 3Z
+const NOTIFICATION_WORKER_URL = "https://green-sun-4a78.3z-notifications.workers.dev";
+const boardNotifyTimes = new Map();
 // ВСТАВЬТЕ СЮДА ПУБЛИЧНЫЙ VAPID KEY ИЗ Firebase → Cloud Messaging → Web Push certificates
 const VAPID_PUBLIC_KEY = "BGLlp6XpXZTguy2T_WsjGt64kL7m4iS77UM3aMRksz7ujQmbbj1WtED5YQ3zPASI0MdFCKCx_rmNQZF2-qLyix8";
 let fcmMessaging = null;
@@ -202,6 +205,28 @@ window.addEventListener('unhandledrejection',event=>{
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
+
+// Push отправляется отдельно: ошибка уведомления не мешает работе доски или чата.
+async function notifyWorker(type, payload = {}) {
+  if (!cloudUser) return;
+  try {
+    const idToken = await cloudUser.getIdToken();
+    const response = await fetch(NOTIFICATION_WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + idToken
+      },
+      body: JSON.stringify({ type, ...payload })
+    });
+    if (!response.ok) {
+      console.warn("3Z Worker:", response.status, await response.text().catch(() => ""));
+    }
+  } catch (err) {
+    console.warn("3Z push notification failed:", err);
+  }
+}
+
 let cloudUser = null, cloudEnabled = false, cloudApplying = false;
 let stopBoards = null, stopBoard = null, stopMessages = null;
 let cloudSaveTimer = null, cloudMessages = [], messageSnapshotReady=false;
@@ -432,6 +457,16 @@ $('pattern').value=saved.pattern||'dots';$('material').value=saved.material||'#f
           name:boardName,
           pattern:savePattern, material:saveMaterial, archived:false
         },{merge:true});
+
+        // Не чаще одного push об изменении доски за 30 секунд.
+        const notifyNow = Date.now();
+        if (notifyNow - (boardNotifyTimes.get(saveBoardId) || 0) > 30000) {
+          boardNotifyTimes.set(saveBoardId, notifyNow);
+          notifyWorker('board', {
+            boardId: saveBoardId,
+            projectName: boardName
+          });
+        }
         if(active===saveBoardId)$('status').textContent='☁ Сохранено в облако';
       }catch(err){console.error(err);if(active===saveBoardId)$('status').textContent='Ошибка облачного сохранения';toast('Не удалось сохранить в облако: '+(err.code||err.message));}
     },350);
@@ -576,6 +611,13 @@ $('send').onsubmit=async e=>{
       uid:cloudUser.uid,name,
       text:JSON.stringify({boardId:active,text}),
       created:serverTimestamp()
+    });
+    const projectName = (projects.find(p=>p.id===active)||{}).name || 'Проект';
+    notifyWorker('chat', {
+      boardId: active,
+      projectName,
+      senderName: name,
+      message: text
     });
     $('msg').value='';
   }catch(err){toast('Не удалось отправить сообщение: '+(err.code||err.message));}
